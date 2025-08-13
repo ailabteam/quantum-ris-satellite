@@ -1,3 +1,4 @@
+# plot_generator.py
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -9,6 +10,7 @@ import os
 def plot_performance_vs_N(df, save_path):
     """
     Generates and saves a line plot of Sum-SNR (dB) vs. N.
+    This will be Figure 3 in the paper.
     """
     print("Generating plot: Performance vs. N...")
     
@@ -31,42 +33,37 @@ def plot_performance_vs_N(df, save_path):
     fig.savefig(save_path, dpi=600, bbox_inches='tight')
     print(f"Plot saved to '{save_path}'")
 
-def plot_comparison_at_N256(df, save_path):
+def plot_gain_comparison_at_N256(df, save_path):
     """
-    Generates and saves a bar chart comparing methods at N=256.
+    Generates and saves a bar chart showing the performance GAIN over the Random baseline.
+    This will be Figure 4 in the paper.
     """
-    print("\nGenerating plot: Detailed Comparison at N=256...")
+    print("\nGenerating plot: Performance Gain Comparison at N=256...")
     
     data_n256 = df[df['N'] == 256].iloc[0]
     
-    methods = ['Random', 'Benchmark\n(User 0)', 'SDR', 'Proposed\nQAOA']
-    snr_values_db = [
-        data_n256['dB_SNR_Random'],
-        data_n256['dB_SNR_Benchmark'],
-        data_n256['dB_SNR_SDR'],
-        data_n256['dB_SNR_QAOA']
-    ]
-    colors = ['gray', '#ff7f0e', '#2ca02c', '#1f77b4']
+    # Calculate gain over the random baseline
+    random_baseline_db = data_n256['dB_SNR_Random']
+    gain_benchmark = data_n256['dB_SNR_Benchmark'] - random_baseline_db
+    gain_sdr = data_n256['dB_SNR_SDR'] - random_baseline_db
+    gain_qaoa = data_n256['dB_SNR_QAOA'] - random_baseline_db
+
+    methods = ['Benchmark\n(User 0)', 'SDR', 'Proposed\nQAOA']
+    gains_db = [gain_benchmark, gain_sdr, gain_qaoa]
+    colors = ['#ff7f0e', '#2ca02c', '#1f77b4']
 
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(8, 7))
     
-    bars = ax.bar(methods, snr_values_db, color=colors, width=0.6, zorder=3)
+    bars = ax.bar(methods, gains_db, color=colors, width=0.5, zorder=3)
     
-    ax.axhline(0, color='black', linewidth=0.8, linestyle='--', zorder=2)
-    
-    ax.set_ylabel('Sum-SNR (dB)', fontsize=14)
-    ax.set_title('Performance Comparison at N = 256', fontsize=16, fontweight='bold')
-    ax.tick_params(axis='x', labelsize=12, rotation=0) # Ensure labels are horizontal
+    ax.set_ylabel('Performance Gain over Random Baseline (dB)', fontsize=14)
+    ax.set_title('Optimization Gain at N = 256', fontsize=16, fontweight='bold')
+    ax.tick_params(axis='x', labelsize=12, rotation=0)
     ax.tick_params(axis='y', labelsize=12)
     ax.grid(axis='y', linestyle=':', zorder=1)
     
-    # --- FIXED: Use ax.bar_label() for robust labeling ---
-    ax.bar_label(bars, fmt='%.2f', fontsize=12, fontweight='bold', padding=5)
-
-    # Adjust y-axis limits for better visualization
-    min_val = min(snr_values_db)
-    ax.set_ylim(bottom=min_val - 5)
+    ax.bar_label(bars, fmt='%.2f dB', fontsize=12, fontweight='bold', padding=5)
 
     fig.savefig(save_path, dpi=600, bbox_inches='tight')
     print(f"Plot saved to '{save_path}'")
@@ -86,7 +83,10 @@ if __name__ == "__main__":
             if 'SNR' in col:
                 df[f'dB_{col}'] = 10 * np.log10(df[col].clip(lower=1e-20))
         
-        plot_performance_vs_N(df, os.path.join(output_dir, 'plot_vs_N_line.png'))
-        plot_comparison_at_N256(df, os.path.join(output_dir, 'plot_vs_N_bar.png'))
+        # Figure 3 in the paper
+        plot_performance_vs_N(df, os.path.join(output_dir, 'fig_performance_vs_N.png'))
         
-        print("\nAll plots have been generated successfully.")
+        # Figure 4 in the paper
+        plot_gain_comparison_at_N256(df, os.path.join(output_dir, 'fig_gain_at_N256.png'))
+        
+        print("\nAll plots for the paper have been generated successfully.")
